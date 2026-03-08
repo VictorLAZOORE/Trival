@@ -1,39 +1,39 @@
 "use client";
 
 import { useState } from "react";
-import { ClientRoom, THEMES } from "@/types/game";
-import { getSocket } from "@/lib/socket";
+import { GameStateResponse, THEMES } from "@/types/game";
+import { performAction } from "@/lib/api";
 
 interface LobbyProps {
-  room: ClientRoom;
+  state: GameStateResponse;
   playerId: string;
-  onGameStart: () => void;
+  roomCode: string;
 }
 
-export default function Lobby({ room, playerId, onGameStart }: LobbyProps) {
-  const [theme, setTheme] = useState(room.theme || "");
+export default function Lobby({ state, playerId, roomCode }: LobbyProps) {
+  const [theme, setTheme] = useState(state.room.theme || "");
   const [customTheme, setCustomTheme] = useState("");
-  const [questionCount, setQuestionCount] = useState(room.questionCount || 5);
+  const [questionCount, setQuestionCount] = useState(
+    state.room.questionCount || 5
+  );
   const [loading, setLoading] = useState(false);
-  const [questionsReady, setQuestionsReady] = useState(false);
   const [error, setError] = useState("");
 
-  const isHost = playerId === room.host;
+  const isHost = playerId === state.room.host;
   const selectedTheme = theme === "custom" ? customTheme : theme;
+  const questionsReady = state.room.questionsReady;
 
   async function handleGenerateQuestions() {
     if (!selectedTheme) return;
     setLoading(true);
     setError("");
 
-    const socket = getSocket();
-    socket.emit("set_game_options", {
-      code: room.code,
-      theme: selectedTheme,
-      questionCount,
-    });
-
     try {
+      await performAction(roomCode, playerId, "set_options", {
+        theme: selectedTheme,
+        questionCount,
+      });
+
       const res = await fetch("/api/questions", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
@@ -47,12 +47,9 @@ export default function Lobby({ room, playerId, onGameStart }: LobbyProps) {
         return;
       }
 
-      socket.emit("load_questions", {
-        code: room.code,
+      await performAction(roomCode, playerId, "load_questions", {
         questions: data.questions,
       });
-
-      setQuestionsReady(true);
     } catch {
       setError("Failed to generate questions. Try again.");
     }
@@ -60,14 +57,11 @@ export default function Lobby({ room, playerId, onGameStart }: LobbyProps) {
   }
 
   async function handleStartGame() {
-    const socket = getSocket();
-    socket.emit("start_game", { code: room.code }, (response: { success: boolean; error?: string }) => {
-      if (response.success) {
-        onGameStart();
-      } else {
-        setError(response.error || "Failed to start game");
-      }
-    });
+    setError("");
+    const result = await performAction(roomCode, playerId, "start_game");
+    if (!result.success) {
+      setError(result.error || "Failed to start game");
+    }
   }
 
   return (
@@ -77,21 +71,23 @@ export default function Lobby({ room, playerId, onGameStart }: LobbyProps) {
         <div className="inline-flex items-center gap-2 bg-white/10 backdrop-blur-sm rounded-xl px-4 py-2">
           <span className="text-white/60 text-sm">Room Code</span>
           <span className="text-2xl font-mono font-bold text-yellow-400 tracking-wider">
-            {room.code}
+            {roomCode}
           </span>
         </div>
-        <p className="text-white/50 text-xs mt-1">Share this code with friends</p>
+        <p className="text-white/50 text-xs mt-1">
+          Share this code with friends
+        </p>
       </div>
 
       <div className="bg-white/10 backdrop-blur-sm rounded-2xl p-4 mb-4">
         <h2 className="text-white font-semibold mb-3 flex items-center gap-2">
           <span className="w-6 h-6 bg-yellow-400 rounded-full flex items-center justify-center text-xs text-black font-bold">
-            {room.players.length}
+            {state.room.players.length}
           </span>
           Players
         </h2>
         <div className="grid grid-cols-2 gap-2">
-          {room.players.map((player) => (
+          {state.room.players.map((player) => (
             <div
               key={player.id}
               className="flex items-center gap-2 bg-white/10 rounded-xl px-3 py-2"
@@ -102,9 +98,13 @@ export default function Lobby({ room, playerId, onGameStart }: LobbyProps) {
               >
                 {player.name.charAt(0).toUpperCase()}
               </div>
-              <span className="text-white text-sm truncate">{player.name}</span>
+              <span className="text-white text-sm truncate">
+                {player.name}
+              </span>
               {player.isHost && (
-                <span className="text-yellow-400 text-xs ml-auto shrink-0">HOST</span>
+                <span className="text-yellow-400 text-xs ml-auto shrink-0">
+                  HOST
+                </span>
               )}
             </div>
           ))}
@@ -121,7 +121,7 @@ export default function Lobby({ room, playerId, onGameStart }: LobbyProps) {
               {THEMES.map((t) => (
                 <button
                   key={t}
-                  onClick={() => { setTheme(t); setQuestionsReady(false); }}
+                  onClick={() => setTheme(t)}
                   className={`px-3 py-2 rounded-xl text-sm font-medium transition-all ${
                     theme === t
                       ? "bg-yellow-400 text-black scale-105"
@@ -132,7 +132,7 @@ export default function Lobby({ room, playerId, onGameStart }: LobbyProps) {
                 </button>
               ))}
               <button
-                onClick={() => { setTheme("custom"); setQuestionsReady(false); }}
+                onClick={() => setTheme("custom")}
                 className={`px-3 py-2 rounded-xl text-sm font-medium transition-all ${
                   theme === "custom"
                     ? "bg-yellow-400 text-black scale-105"
@@ -147,7 +147,7 @@ export default function Lobby({ room, playerId, onGameStart }: LobbyProps) {
                 type="text"
                 placeholder="Enter custom theme..."
                 value={customTheme}
-                onChange={(e) => { setCustomTheme(e.target.value); setQuestionsReady(false); }}
+                onChange={(e) => setCustomTheme(e.target.value)}
                 className="w-full mt-2 px-4 py-2 rounded-xl bg-white/10 text-white placeholder-white/40 border border-white/20 focus:outline-none focus:border-yellow-400"
               />
             )}
@@ -162,7 +162,7 @@ export default function Lobby({ room, playerId, onGameStart }: LobbyProps) {
               min="3"
               max="15"
               value={questionCount}
-              onChange={(e) => { setQuestionCount(Number(e.target.value)); setQuestionsReady(false); }}
+              onChange={(e) => setQuestionCount(Number(e.target.value))}
               className="w-full accent-yellow-400"
             />
             <div className="flex justify-between text-white/40 text-xs">
@@ -183,9 +183,24 @@ export default function Lobby({ room, playerId, onGameStart }: LobbyProps) {
             >
               {loading ? (
                 <span className="flex items-center justify-center gap-2">
-                  <svg className="animate-spin h-5 w-5" viewBox="0 0 24 24">
-                    <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" fill="none" />
-                    <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z" />
+                  <svg
+                    className="animate-spin h-5 w-5"
+                    viewBox="0 0 24 24"
+                  >
+                    <circle
+                      className="opacity-25"
+                      cx="12"
+                      cy="12"
+                      r="10"
+                      stroke="currentColor"
+                      strokeWidth="4"
+                      fill="none"
+                    />
+                    <path
+                      className="opacity-75"
+                      fill="currentColor"
+                      d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z"
+                    />
                   </svg>
                   Generating Questions...
                 </span>
@@ -196,7 +211,6 @@ export default function Lobby({ room, playerId, onGameStart }: LobbyProps) {
           ) : (
             <button
               onClick={handleStartGame}
-              disabled={room.players.length < 1}
               className="w-full py-3 rounded-xl font-bold text-lg transition-all bg-gradient-to-r from-green-500 to-emerald-500 text-white hover:scale-[1.02] active:scale-[0.98] animate-pulse"
             >
               Start Game!
@@ -209,14 +223,33 @@ export default function Lobby({ room, playerId, onGameStart }: LobbyProps) {
         <div className="bg-white/10 backdrop-blur-sm rounded-2xl p-6 flex-1 flex items-center justify-center">
           <div className="text-center">
             <div className="w-16 h-16 mx-auto mb-4 rounded-full bg-white/10 flex items-center justify-center">
-              <svg className="animate-spin h-8 w-8 text-yellow-400" viewBox="0 0 24 24">
-                <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" fill="none" />
-                <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z" />
+              <svg
+                className="animate-spin h-8 w-8 text-yellow-400"
+                viewBox="0 0 24 24"
+              >
+                <circle
+                  className="opacity-25"
+                  cx="12"
+                  cy="12"
+                  r="10"
+                  stroke="currentColor"
+                  strokeWidth="4"
+                  fill="none"
+                />
+                <path
+                  className="opacity-75"
+                  fill="currentColor"
+                  d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z"
+                />
               </svg>
             </div>
-            <p className="text-white text-lg font-medium">Waiting for host to start...</p>
-            {room.theme && (
-              <p className="text-yellow-400 mt-2">Theme: {room.theme}</p>
+            <p className="text-white text-lg font-medium">
+              Waiting for host to start...
+            </p>
+            {state.room.theme && (
+              <p className="text-yellow-400 mt-2">
+                Theme: {state.room.theme}
+              </p>
             )}
           </div>
         </div>

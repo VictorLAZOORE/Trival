@@ -1,8 +1,7 @@
 "use client";
 
-import { useState, useEffect, useCallback } from "react";
+import { useCallback } from "react";
 import { QUESTION_TIME } from "@/types/game";
-import { sounds } from "@/lib/sounds";
 
 interface QuestionCardProps {
   question: string;
@@ -65,24 +64,6 @@ export default function QuestionCard({
   answered,
   selectedChoice,
 }: QuestionCardProps) {
-  const [timeLeft, setTimeLeft] = useState(timeLimit);
-
-  useEffect(() => {
-    setTimeLeft(timeLimit);
-  }, [question, timeLimit]);
-
-  useEffect(() => {
-    if (timeLeft <= 0) return;
-    const timer = setInterval(() => {
-      setTimeLeft((prev) => {
-        const next = prev - 1;
-        if (next <= 3 && next > 0) sounds.countdown();
-        return Math.max(0, next);
-      });
-    }, 1000);
-    return () => clearInterval(timer);
-  }, [timeLeft, question]);
-
   const handleAnswer = useCallback(
     (idx: number) => {
       if (answered) return;
@@ -91,9 +72,13 @@ export default function QuestionCard({
     [answered, onAnswer]
   );
 
-  const progress = (timeLeft / QUESTION_TIME) * 100;
+  const progress = (timeLimit / QUESTION_TIME) * 100;
   const timerColor =
-    timeLeft <= 3 ? "bg-red-500" : timeLeft <= 7 ? "bg-yellow-500" : "bg-green-500";
+    timeLimit <= 3
+      ? "bg-red-500"
+      : timeLimit <= 7
+      ? "bg-yellow-500"
+      : "bg-green-500";
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-indigo-900 via-purple-900 to-pink-900 flex flex-col">
@@ -104,10 +89,10 @@ export default function QuestionCard({
         <div className="flex items-center gap-2">
           <div
             className={`w-10 h-10 rounded-full flex items-center justify-center text-white font-bold text-lg ${
-              timeLeft <= 3 ? "animate-pulse bg-red-500" : "bg-white/20"
+              timeLimit <= 3 ? "animate-pulse bg-red-500" : "bg-white/20"
             }`}
           >
-            {timeLeft}
+            {timeLimit}
           </div>
         </div>
       </div>

@@ -1,9 +1,12 @@
 import {
   Room,
   Player,
-  ClientRoom,
+  GameStateResponse,
+  TriviaQuestion,
   PLAYER_COLORS,
   QUESTION_TIME,
+  SHOW_ANSWER_TIME,
+  LEADERBOARD_TIME,
   MAX_POINTS,
 } from "@/types/game";
 import { v4 as uuidv4 } from "uuid";
@@ -21,10 +24,11 @@ class GameManager {
     return code;
   }
 
-  createRoom(hostSocketId: string, hostName: string): Room {
+  createRoom(hostName: string): { code: string; playerId: string } {
     const code = this.generateRoomCode();
+    const playerId = uuidv4();
     const host: Player = {
-      id: hostSocketId,
+      id: playerId,
       name: hostName,
       score: 0,
       color: PLAYER_COLORS[0],
@@ -34,31 +38,35 @@ class GameManager {
 
     const room: Room = {
       code,
-      host: hostSocketId,
-      players: new Map([[hostSocketId, host]]),
+      host: playerId,
+      players: new Map([[playerId, host]]),
       questions: [],
       currentQuestion: -1,
       status: "lobby",
       theme: "",
       questionCount: 5,
       questionStartTime: 0,
+      phaseStartTime: 0,
       answers: new Map(),
+      questionsReady: false,
+      lastActivity: Date.now(),
     };
 
     this.rooms.set(code, room);
-    return room;
+    return { code, playerId };
   }
 
   joinRoom(
     code: string,
-    playerId: string,
     playerName: string
-  ): { room: Room; player: Player } | null {
+  ): { playerId: string } | { error: string } {
     const room = this.rooms.get(code.toUpperCase());
-    if (!room) return null;
-    if (room.status !== "lobby") return null;
-    if (room.players.size >= 12) return null;
+    if (!room) return { error: "Room not found" };
+    if (room.status !== "lobby")
+      return { error: "Game already in progress" };
+    if (room.players.size >= 12) return { error: "Room is full" };
 
+    const playerId = uuidv4();
     const color = PLAYER_COLORS[room.players.size % PLAYER_COLORS.length];
     const player: Player = {
       id: playerId,
@@ -70,62 +78,47 @@ class GameManager {
     };
 
     room.players.set(playerId, player);
-    return { room, player };
-  }
-
-  removePlayer(playerId: string): { room: Room; wasHost: boolean } | null {
-    for (const [code, room] of this.rooms) {
-      if (room.players.has(playerId)) {
-        const wasHost = room.host === playerId;
-        room.players.delete(playerId);
-
-        if (room.players.size === 0) {
-          this.rooms.delete(code);
-          return { room, wasHost };
-        }
-
-        if (wasHost) {
-          const newHost = room.players.values().next().value;
-          if (newHost) {
-            newHost.isHost = true;
-            room.host = newHost.id;
-          }
-        }
-
-        return { room, wasHost };
-      }
-    }
-    return null;
+    room.lastActivity = Date.now();
+    return { playerId };
   }
 
   getRoom(code: string): Room | undefined {
     return this.rooms.get(code.toUpperCase());
   }
 
-  getRoomByPlayerId(playerId: string): Room | undefined {
-    for (const room of this.rooms.values()) {
-      if (room.players.has(playerId)) return room;
-    }
-    return undefined;
-  }
+  tick(room: Room): void {
+    const now = Date.now();
 
-  toClientRoom(room: Room): ClientRoom {
-    return {
-      code: room.code,
-      host: room.host,
-      players: Array.from(room.players.values()),
-      currentQuestion: room.currentQuestion,
-      status: room.status,
-      theme: room.theme,
-      questionCount: room.questionCount,
-      totalQuestions: room.questions.length,
-    };
+    if (room.status === "playing") {
+      const elapsed = (now - room.questionStartTime) / 1000;
+      if (elapsed >= QUESTION_TIME) {
+        room.status = "showing_answer";
+        room.phaseStartTime = now;
+      }
+    } else if (room.status === "showing_answer") {
+      const elapsed = (now - room.phaseStartTime) / 1000;
+      if (elapsed >= SHOW_ANSWER_TIME) {
+        if (this.isLastQuestion(room)) {
+          room.status = "finished";
+          room.phaseStartTime = now;
+        } else {
+          room.status = "leaderboard";
+          room.phaseStartTime = now;
+        }
+      }
+    } else if (room.status === "leaderboard") {
+      const elapsed = (now - room.phaseStartTime) / 1000;
+      if (elapsed >= LEADERBOARD_TIME) {
+        this.startQuestion(room);
+      }
+    }
   }
 
   startQuestion(room: Room): void {
     room.currentQuestion++;
     room.status = "playing";
     room.questionStartTime = Date.now();
+    room.phaseStartTime = Date.now();
     room.answers.clear();
     for (const player of room.players.values()) {
       player.hasAnswered = false;
@@ -159,6 +152,12 @@ class GameManager {
       player.score += points;
     }
 
+    if (this.allAnswered(room)) {
+      room.status = "showing_answer";
+      room.phaseStartTime = Date.now();
+    }
+
+    room.lastActivity = Date.now();
     return { correct, points };
   }
 
@@ -176,35 +175,171 @@ class GameManager {
     return room.currentQuestion >= room.questions.length - 1;
   }
 
-  getAnswerStats(room: Room): {
-    correctAnswer: number;
-    choiceCounts: number[];
-    playerResults: { name: string; correct: boolean; points: number }[];
-  } {
+  getAnswerStats(room: Room) {
     const question = room.questions[room.currentQuestion];
     const choiceCounts = [0, 0, 0, 0];
-    const playerResults: { name: string; correct: boolean; points: number }[] =
-      [];
 
-    for (const [pid, answer] of room.answers) {
+    for (const answer of room.answers.values()) {
       choiceCounts[answer.choice]++;
-      const player = room.players.get(pid);
-      if (player) {
-        const correct = answer.choice === question.correct;
-        const timeBonus = Math.max(0, 1 - answer.time / QUESTION_TIME);
-        const points = correct
-          ? Math.round(MAX_POINTS * (0.5 + 0.5 * timeBonus))
-          : 0;
-        playerResults.push({ name: player.name, correct, points });
-      }
     }
 
     return {
       correctAnswer: question.correct,
       choiceCounts,
-      playerResults,
     };
+  }
+
+  setOptions(
+    room: Room,
+    playerId: string,
+    theme: string,
+    questionCount: number
+  ): boolean {
+    if (room.host !== playerId) return false;
+    room.theme = theme;
+    room.questionCount = questionCount;
+    room.lastActivity = Date.now();
+    return true;
+  }
+
+  loadQuestions(
+    room: Room,
+    playerId: string,
+    questions: TriviaQuestion[]
+  ): boolean {
+    if (room.host !== playerId) return false;
+    room.questions = questions;
+    room.questionsReady = true;
+    room.lastActivity = Date.now();
+    return true;
+  }
+
+  startGame(
+    room: Room,
+    playerId: string
+  ): { success: boolean; error?: string } {
+    if (room.host !== playerId)
+      return { success: false, error: "Not authorized" };
+    if (!room.questionsReady || room.questions.length === 0)
+      return { success: false, error: "Questions not loaded yet" };
+
+    this.startQuestion(room);
+    room.lastActivity = Date.now();
+    return { success: true };
+  }
+
+  playAgain(room: Room, playerId: string): boolean {
+    if (room.host !== playerId) return false;
+    room.status = "lobby";
+    room.currentQuestion = -1;
+    room.questions = [];
+    room.questionsReady = false;
+    room.answers.clear();
+    for (const player of room.players.values()) {
+      player.score = 0;
+      player.hasAnswered = false;
+    }
+    room.lastActivity = Date.now();
+    return true;
+  }
+
+  getGameState(room: Room, playerId: string): GameStateResponse {
+    this.tick(room);
+
+    const players = Array.from(room.players.values());
+    const myPlayer = room.players.get(playerId);
+
+    const base: GameStateResponse = {
+      room: {
+        code: room.code,
+        status: room.status,
+        players,
+        host: room.host,
+        theme: room.theme,
+        questionCount: room.questionCount,
+        questionsReady: room.questionsReady,
+      },
+      myPlayer,
+    };
+
+    if (room.status === "playing" && room.currentQuestion >= 0) {
+      const q = room.questions[room.currentQuestion];
+      const elapsed = (Date.now() - room.questionStartTime) / 1000;
+      return {
+        ...base,
+        question: {
+          question: q.question,
+          choices: q.choices,
+          questionNumber: room.currentQuestion + 1,
+          totalQuestions: room.questions.length,
+          timeLeft: Math.max(0, Math.ceil(QUESTION_TIME - elapsed)),
+        },
+        answeredCount: room.answers.size,
+        totalPlayers: room.players.size,
+      };
+    }
+
+    if (room.status === "showing_answer" && room.currentQuestion >= 0) {
+      const stats = this.getAnswerStats(room);
+      const q = room.questions[room.currentQuestion];
+      const myRawAnswer = room.answers.get(playerId);
+      let myAnswer: GameStateResponse["myAnswer"] = null;
+      if (myRawAnswer) {
+        const correct = myRawAnswer.choice === stats.correctAnswer;
+        const timeBonus = Math.max(
+          0,
+          1 - myRawAnswer.time / QUESTION_TIME
+        );
+        myAnswer = {
+          choice: myRawAnswer.choice,
+          correct,
+          points: correct
+            ? Math.round(MAX_POINTS * (0.5 + 0.5 * timeBonus))
+            : 0,
+        };
+      }
+      return {
+        ...base,
+        answerReveal: {
+          correctAnswer: stats.correctAnswer,
+          choiceCounts: stats.choiceCounts,
+          choices: q.choices,
+        },
+        myAnswer,
+        leaderboard: this.getLeaderboard(room),
+      };
+    }
+
+    if (room.status === "leaderboard") {
+      return {
+        ...base,
+        leaderboard: this.getLeaderboard(room),
+        currentQuestion: room.currentQuestion + 1,
+        totalQuestions: room.questions.length,
+      };
+    }
+
+    if (room.status === "finished") {
+      return {
+        ...base,
+        leaderboard: this.getLeaderboard(room),
+      };
+    }
+
+    return base;
+  }
+
+  cleanup(): void {
+    const now = Date.now();
+    const timeout = 30 * 60 * 1000;
+    for (const [code, room] of this.rooms) {
+      if (now - room.lastActivity > timeout) {
+        this.rooms.delete(code);
+      }
+    }
   }
 }
 
-export const gameManager = new GameManager();
+const globalForGame = globalThis as unknown as { gameManager?: GameManager };
+export const gameManager = globalForGame.gameManager ?? new GameManager();
+globalForGame.gameManager = gameManager;
