@@ -2,7 +2,8 @@
 
 import { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
-import { createRoom, joinRoom } from "@/lib/api";
+import { getSocket } from "@/lib/socket";
+import { ClientRoom } from "@/types/game";
 
 export default function Home() {
   const router = useRouter();
@@ -29,14 +30,24 @@ export default function Home() {
     setError("");
     saveName();
 
-    try {
-      const { code, playerId } = await createRoom(playerName.trim());
-      sessionStorage.setItem(`trival_player_${code}`, playerId);
-      router.push(`/room/${code}`);
-    } catch (err) {
-      setError(err instanceof Error ? err.message : "Failed to create room");
-    }
-    setLoading(false);
+    const socket = getSocket();
+
+    socket.emit(
+      "create_room",
+      { playerName: playerName.trim() },
+      (response: { success: boolean; room?: ClientRoom; error?: string }) => {
+        setLoading(false);
+        if (response.success && response.room) {
+          sessionStorage.setItem(
+            `room_${response.room.code}`,
+            JSON.stringify(response.room)
+          );
+          router.push(`/room/${response.room.code}`);
+        } else {
+          setError(response.error || "Failed to create room");
+        }
+      }
+    );
   }
 
   async function handleJoinRoom() {
@@ -52,17 +63,24 @@ export default function Home() {
     setError("");
     saveName();
 
-    try {
-      const { code, playerId } = await joinRoom(
-        roomCode.trim(),
-        playerName.trim()
-      );
-      sessionStorage.setItem(`trival_player_${code}`, playerId);
-      router.push(`/room/${code}`);
-    } catch (err) {
-      setError(err instanceof Error ? err.message : "Failed to join room");
-    }
-    setLoading(false);
+    const socket = getSocket();
+
+    socket.emit(
+      "join_room",
+      { code: roomCode.trim().toUpperCase(), playerName: playerName.trim() },
+      (response: { success: boolean; room?: ClientRoom; error?: string }) => {
+        setLoading(false);
+        if (response.success && response.room) {
+          sessionStorage.setItem(
+            `room_${response.room.code}`,
+            JSON.stringify(response.room)
+          );
+          router.push(`/room/${response.room.code}`);
+        } else {
+          setError(response.error || "Failed to join room");
+        }
+      }
+    );
   }
 
   return (

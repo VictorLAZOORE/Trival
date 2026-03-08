@@ -13,62 +13,41 @@ export interface Player {
   hasAnswered: boolean;
 }
 
-export type RoomStatus =
-  | "lobby"
-  | "playing"
-  | "showing_answer"
-  | "leaderboard"
-  | "finished";
-
 export interface Room {
   code: string;
   host: string;
   players: Map<string, Player>;
   questions: TriviaQuestion[];
   currentQuestion: number;
-  status: RoomStatus;
+  status: "lobby" | "playing" | "showing_answer" | "leaderboard" | "finished";
   theme: string;
   questionCount: number;
   questionStartTime: number;
-  phaseStartTime: number;
   answers: Map<string, { choice: number; time: number }>;
-  questionsReady: boolean;
-  lastActivity: number;
 }
 
-export interface GameStateResponse {
-  room: {
-    code: string;
-    status: RoomStatus;
-    players: Player[];
-    host: string;
-    theme: string;
-    questionCount: number;
-    questionsReady: boolean;
-  };
-  myPlayer?: Player;
-  question?: {
-    question: string;
-    choices: string[];
-    questionNumber: number;
-    totalQuestions: number;
-    timeLeft: number;
-  };
-  answerReveal?: {
-    correctAnswer: number;
-    choiceCounts: number[];
-    choices: string[];
-  };
-  myAnswer?: {
-    choice: number;
-    correct: boolean;
-    points: number;
-  } | null;
-  leaderboard?: Player[];
-  answeredCount?: number;
-  totalPlayers?: number;
-  currentQuestion?: number;
-  totalQuestions?: number;
+export interface ClientRoom {
+  code: string;
+  host: string;
+  players: Player[];
+  currentQuestion: number;
+  status: Room["status"];
+  theme: string;
+  questionCount: number;
+  totalQuestions: number;
+}
+
+export interface GameAnswer {
+  playerId: string;
+  choice: number;
+  time: number;
+}
+
+export interface AnswerResult {
+  correct: boolean;
+  correctAnswer: number;
+  pointsEarned: number;
+  players: Player[];
 }
 
 export const PLAYER_COLORS = [
