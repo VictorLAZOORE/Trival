@@ -78,6 +78,14 @@ export const THEMES = [
   "Animals",
 ];
 
+export type Difficulty = "easy" | "medium" | "hard";
+
+export const DIFFICULTIES: { value: Difficulty; label: string; emoji: string }[] = [
+  { value: "easy", label: "Easy", emoji: "😊" },
+  { value: "medium", label: "Medium", emoji: "🤔" },
+  { value: "hard", label: "Hard", emoji: "🔥" },
+];
+
 export const QUESTION_TIME = 15;
 export const SHOW_ANSWER_TIME = 4;
 export const LEADERBOARD_TIME = 5;

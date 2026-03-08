@@ -1,7 +1,7 @@
 "use client";
 
 import { useState } from "react";
-import { ClientRoom, THEMES } from "@/types/game";
+import { ClientRoom, THEMES, DIFFICULTIES, Difficulty } from "@/types/game";
 import { getSocket } from "@/lib/socket";
 
 interface LobbyProps {
@@ -14,6 +14,7 @@ export default function Lobby({ room, playerId, onGameStart }: LobbyProps) {
   const [theme, setTheme] = useState(room.theme || "");
   const [customTheme, setCustomTheme] = useState("");
   const [questionCount, setQuestionCount] = useState(room.questionCount || 5);
+  const [difficulty, setDifficulty] = useState<Difficulty>("medium");
   const [loading, setLoading] = useState(false);
   const [questionsReady, setQuestionsReady] = useState(false);
   const [error, setError] = useState("");
@@ -37,7 +38,7 @@ export default function Lobby({ room, playerId, onGameStart }: LobbyProps) {
       const res = await fetch("/api/questions", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ theme: selectedTheme, count: questionCount }),
+        body: JSON.stringify({ theme: selectedTheme, count: questionCount, difficulty }),
       });
       const data = await res.json();
 
@@ -151,6 +152,30 @@ export default function Lobby({ room, playerId, onGameStart }: LobbyProps) {
                 className="w-full mt-2 px-4 py-2 rounded-xl bg-white/10 text-white placeholder-white/40 border border-white/20 focus:outline-none focus:border-yellow-400"
               />
             )}
+          </div>
+
+          <div className="mb-4">
+            <label className="text-white/70 text-sm mb-2 block">Difficulty</label>
+            <div className="grid grid-cols-3 gap-2">
+              {DIFFICULTIES.map((d) => (
+                <button
+                  key={d.value}
+                  onClick={() => { setDifficulty(d.value); setQuestionsReady(false); }}
+                  className={`px-3 py-2.5 rounded-xl text-sm font-medium transition-all flex flex-col items-center gap-1 ${
+                    difficulty === d.value
+                      ? d.value === "easy"
+                        ? "bg-green-500 text-white scale-105"
+                        : d.value === "medium"
+                        ? "bg-yellow-400 text-black scale-105"
+                        : "bg-red-500 text-white scale-105"
+                      : "bg-white/10 text-white hover:bg-white/20"
+                  }`}
+                >
+                  <span className="text-lg">{d.emoji}</span>
+                  <span>{d.label}</span>
+                </button>
+              ))}
+            </div>
           </div>
 
           <div className="mb-4">
