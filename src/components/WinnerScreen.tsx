@@ -51,22 +51,18 @@ export default function WinnerScreen({
   }, []);
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-indigo-900 via-purple-900 to-pink-900 flex flex-col">
-      <div className="text-center pt-8 pb-4 px-4">
-        <div className="text-6xl mb-2">🏆</div>
-        <h1 className="text-3xl font-bold text-white mb-1">
+    <div className="h-dvh bg-gradient-to-br from-indigo-900 via-purple-900 to-pink-900 flex flex-col overflow-hidden">
+      <div className="text-center pt-6 pb-3 px-4 shrink-0">
+        <div className="text-5xl mb-1">🏆</div>
+        <h1 className="text-2xl font-bold text-white mb-1">
           {isWinner ? "You Win!" : `${winner?.name} Wins!`}
         </h1>
-        <p className="text-yellow-400 text-xl font-semibold">
+        <p className="text-yellow-400 text-lg font-semibold">
           {winner?.score.toLocaleString()} points
         </p>
       </div>
 
-      <div className="flex-1">
-        <Leaderboard players={players} isFinal />
-      </div>
-
-      <div className="p-4 pb-8">
+      <div className="p-4 pt-0 shrink-0">
         {isHost ? (
           <button
             onClick={onPlayAgain}
@@ -75,10 +71,14 @@ export default function WinnerScreen({
             Play Again
           </button>
         ) : (
-          <p className="text-white/60 text-center">
+          <p className="text-white/60 text-center py-2">
             Waiting for host to start a new game...
           </p>
         )}
+      </div>
+
+      <div className="flex-1 overflow-y-auto">
+        <Leaderboard players={players} isFinal />
       </div>
     </div>
   );
