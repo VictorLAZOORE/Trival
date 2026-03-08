@@ -1,9 +1,14 @@
 import OpenAI from "openai";
 import { TriviaQuestion } from "@/types/game";
 
-const openai = new OpenAI({
-  apiKey: process.env.OPENAI_API_KEY,
-});
+let openai: OpenAI | null = null;
+
+function getClient(): OpenAI {
+  if (!openai) {
+    openai = new OpenAI({ apiKey: process.env.OPENAI_API_KEY });
+  }
+  return openai;
+}
 
 export async function generateQuestions(
   theme: string,
@@ -19,7 +24,7 @@ Make questions fun, varied in difficulty, and factually accurate.
 Return ONLY the JSON array, no markdown or extra text.`;
 
   try {
-    const response = await openai.chat.completions.create({
+    const response = await getClient().chat.completions.create({
       model: "gpt-4o-mini",
       messages: [
         {
