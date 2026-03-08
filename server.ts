@@ -214,6 +214,18 @@ app.prepare().then(() => {
       });
     });
 
+    socket.on("leave_room", ({ code }) => {
+      const room = gameManager.getRoom(code);
+      if (!room) return;
+      socket.leave(code);
+      const result = gameManager.removePlayer(socket.id);
+      if (result && result.room.players.size > 0) {
+        io.to(result.room.code).emit("player_left", {
+          room: gameManager.toClientRoom(result.room),
+        });
+      }
+    });
+
     socket.on("disconnect", () => {
       console.log(`Player disconnected: ${socket.id}`);
       const result = gameManager.removePlayer(socket.id);

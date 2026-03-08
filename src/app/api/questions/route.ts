@@ -12,7 +12,7 @@ export async function POST(req: NextRequest) {
       );
     }
 
-    const questions = await generateQuestions(theme, count, difficulty || "medium", language || "en");
+    const questions = await generateQuestions(theme, count, difficulty || "medium", language || "fr");
     return NextResponse.json({ questions });
   } catch {
     return NextResponse.json(

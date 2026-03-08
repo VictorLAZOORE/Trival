@@ -159,6 +159,13 @@ export default function RoomPage({ params }: { params: Promise<{ code: string }>
     socket.emit("play_again", { code });
   }, [code]);
 
+  const handleLeaveRoom = useCallback(() => {
+    const socket = getSocket();
+    socket.emit("leave_room", { code });
+    sessionStorage.removeItem(`room_${code}`);
+    router.push("/");
+  }, [code, router]);
+
   if (!room) {
     return (
       <div className="min-h-screen bg-gradient-to-br from-indigo-900 via-purple-900 to-pink-900 flex items-center justify-center">
@@ -174,6 +181,7 @@ export default function RoomPage({ params }: { params: Promise<{ code: string }>
           room={room}
           playerId={playerId}
           onGameStart={() => {}}
+          onLeave={handleLeaveRoom}
         />
       );
 

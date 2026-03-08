@@ -8,9 +8,10 @@ interface LobbyProps {
   room: ClientRoom;
   playerId: string;
   onGameStart: () => void;
+  onLeave?: () => void;
 }
 
-export default function Lobby({ room, playerId, onGameStart }: LobbyProps) {
+export default function Lobby({ room, playerId, onGameStart, onLeave }: LobbyProps) {
   const [theme, setTheme] = useState(room.theme || "");
   const [customTheme, setCustomTheme] = useState("");
   const [questionCount, setQuestionCount] = useState(room.questionCount || 5);
@@ -74,6 +75,19 @@ export default function Lobby({ room, playerId, onGameStart }: LobbyProps) {
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-indigo-900 via-purple-900 to-pink-900 p-4 flex flex-col">
+      <div className="flex items-center mb-4">
+        {onLeave && (
+          <button
+            onClick={onLeave}
+            className="flex items-center gap-1.5 text-white/60 hover:text-white text-sm transition-colors"
+          >
+            <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+              <path strokeLinecap="round" strokeLinejoin="round" d="M15 19l-7-7 7-7" />
+            </svg>
+            Leave
+          </button>
+        )}
+      </div>
       <div className="text-center mb-6">
         <h1 className="text-2xl font-bold text-white mb-2">Game Lobby</h1>
         <div className="inline-flex items-center gap-2 bg-white/10 backdrop-blur-sm rounded-xl px-4 py-2">
