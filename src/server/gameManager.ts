@@ -109,6 +109,16 @@ class GameManager {
     return undefined;
   }
 
+  getOpenRooms(): ClientRoom[] {
+    const open: ClientRoom[] = [];
+    for (const room of this.rooms.values()) {
+      if (room.status === "lobby" && room.players.size < 12) {
+        open.push(this.toClientRoom(room));
+      }
+    }
+    return open;
+  }
+
   toClientRoom(room: Room): ClientRoom {
     return {
       code: room.code,

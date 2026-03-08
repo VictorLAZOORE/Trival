@@ -3,7 +3,7 @@ import { generateQuestions } from "@/lib/openai";
 
 export async function POST(req: NextRequest) {
   try {
-    const { theme, count, difficulty } = await req.json();
+    const { theme, count, difficulty, language } = await req.json();
 
     if (!theme || !count || count < 1 || count > 20) {
       return NextResponse.json(
@@ -12,7 +12,7 @@ export async function POST(req: NextRequest) {
       );
     }
 
-    const questions = await generateQuestions(theme, count, difficulty || "medium");
+    const questions = await generateQuestions(theme, count, difficulty || "medium", language || "en");
     return NextResponse.json({ questions });
   } catch {
     return NextResponse.json(

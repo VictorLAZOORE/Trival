@@ -1,7 +1,7 @@
 "use client";
 
 import { useState } from "react";
-import { ClientRoom, THEMES, DIFFICULTIES, Difficulty } from "@/types/game";
+import { ClientRoom, THEMES, DIFFICULTIES, Difficulty, LANGUAGES, Language } from "@/types/game";
 import { getSocket } from "@/lib/socket";
 
 interface LobbyProps {
@@ -15,6 +15,7 @@ export default function Lobby({ room, playerId, onGameStart }: LobbyProps) {
   const [customTheme, setCustomTheme] = useState("");
   const [questionCount, setQuestionCount] = useState(room.questionCount || 5);
   const [difficulty, setDifficulty] = useState<Difficulty>("medium");
+  const [language, setLanguage] = useState<Language>("en");
   const [loading, setLoading] = useState(false);
   const [questionsReady, setQuestionsReady] = useState(false);
   const [error, setError] = useState("");
@@ -38,7 +39,7 @@ export default function Lobby({ room, playerId, onGameStart }: LobbyProps) {
       const res = await fetch("/api/questions", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ theme: selectedTheme, count: questionCount, difficulty }),
+        body: JSON.stringify({ theme: selectedTheme, count: questionCount, difficulty, language }),
       });
       const data = await res.json();
 
@@ -115,6 +116,26 @@ export default function Lobby({ room, playerId, onGameStart }: LobbyProps) {
       {isHost && (
         <div className="bg-white/10 backdrop-blur-sm rounded-2xl p-4 mb-4 flex-1">
           <h2 className="text-white font-semibold mb-3">Game Settings</h2>
+
+          <div className="mb-4">
+            <label className="text-white/70 text-sm mb-2 block">Language</label>
+            <div className="grid grid-cols-2 gap-2">
+              {LANGUAGES.map((l) => (
+                <button
+                  key={l.value}
+                  onClick={() => { setLanguage(l.value); setQuestionsReady(false); }}
+                  className={`px-3 py-2.5 rounded-xl text-sm font-medium transition-all flex items-center justify-center gap-2 ${
+                    language === l.value
+                      ? "bg-yellow-400 text-black scale-105"
+                      : "bg-white/10 text-white hover:bg-white/20"
+                  }`}
+                >
+                  <span className="text-lg">{l.flag}</span>
+                  <span>{l.label}</span>
+                </button>
+              ))}
+            </div>
+          </div>
 
           <div className="mb-4">
             <label className="text-white/70 text-sm mb-2 block">Theme</label>

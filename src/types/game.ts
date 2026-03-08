@@ -78,6 +78,13 @@ export const THEMES = [
   "Animals",
 ];
 
+export type Language = "en" | "fr";
+
+export const LANGUAGES: { value: Language; label: string; flag: string }[] = [
+  { value: "en", label: "English", flag: "🇬🇧" },
+  { value: "fr", label: "Français", flag: "🇫🇷" },
+];
+
 export type Difficulty = "easy" | "medium" | "hard";
 
 export const DIFFICULTIES: { value: Difficulty; label: string; emoji: string }[] = [

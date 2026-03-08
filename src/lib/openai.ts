@@ -13,7 +13,8 @@ function getClient(): OpenAI {
 export async function generateQuestions(
   theme: string,
   count: number,
-  difficulty: string = "medium"
+  difficulty: string = "medium",
+  language: string = "en"
 ): Promise<TriviaQuestion[]> {
   const difficultyGuide: Record<string, string> = {
     easy: "Make questions simple and straightforward, suitable for beginners or casual players. Use well-known facts that most people would know.",
@@ -21,9 +22,14 @@ export async function generateQuestions(
     hard: "Make questions very challenging, requiring deep or specialized knowledge. Include tricky answer choices that are plausible but wrong.",
   };
 
+  const languageInstruction = language === "fr"
+    ? "Write ALL questions and ALL answer choices in French."
+    : "Write all questions and answer choices in English.";
+
   const prompt = `Generate ${count} trivia questions about "${theme}".
 Difficulty level: ${difficulty.toUpperCase()}.
 ${difficultyGuide[difficulty] || difficultyGuide.medium}
+${languageInstruction}
 
 Return a JSON array where each element has:
 - "question": the trivia question (string)

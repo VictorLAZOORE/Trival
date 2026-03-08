@@ -94,6 +94,10 @@ app.prepare().then(() => {
   io.on("connection", (socket) => {
     console.log(`Player connected: ${socket.id}`);
 
+    socket.on("list_rooms", (callback) => {
+      callback(gameManager.getOpenRooms());
+    });
+
     socket.on("create_room", ({ playerName }, callback) => {
       const room = gameManager.createRoom(socket.id, playerName);
       socket.join(room.code);
