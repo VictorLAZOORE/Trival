@@ -24,4 +24,20 @@ export const GAMES: GameConfig[] = [
     emoji: "🍸",
     gradient: "from-rose-500 to-fuchsia-600",
   },
+  {
+    id: "party-mix",
+    name: "Party Mix",
+    description: "Never Have I Ever, Vérité/Défi, Le plus susceptible… en un jeu.",
+    href: "/games/party-mix",
+    emoji: "🎉",
+    gradient: "from-violet-500 to-amber-500",
+  },
+  {
+    id: "chooser",
+    name: "Le Chooser",
+    description: "Posez vos doigts sur l'écran, on choisit au hasard qui est désigné.",
+    href: "/games/chooser",
+    emoji: "👆",
+    gradient: "from-emerald-500 to-teal-600",
+  },
 ];
