@@ -9,7 +9,7 @@ export default function Home() {
       <div className="w-full max-w-2xl">
         <header className="text-center mb-10">
           <h1 className="text-5xl md:text-6xl font-black text-transparent bg-clip-text bg-gradient-to-r from-yellow-400 via-pink-500 to-cyan-400 mb-2 drop-shadow-lg">
-            TRIVAL
+            MINI-GAMES
           </h1>
           <p className="text-white/50 text-sm md:text-base">Plateforme de mini-jeux</p>
         </header>
