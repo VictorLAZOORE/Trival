@@ -116,7 +116,7 @@ export default function RoomPage({ params }: { params: Promise<{ code: string }>
     if (storedRoom) {
       setRoom(JSON.parse(storedRoom));
     } else {
-      router.push("/");
+      router.push("/games/trival");
     }
 
     return () => {
@@ -163,7 +163,7 @@ export default function RoomPage({ params }: { params: Promise<{ code: string }>
     const socket = getSocket();
     socket.emit("leave_room", { code });
     sessionStorage.removeItem(`room_${code}`);
-    router.push("/");
+    router.push("/games/trival");
   }, [code, router]);
 
   if (!room) {

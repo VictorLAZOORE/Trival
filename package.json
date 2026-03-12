@@ -6,7 +6,8 @@
     "dev": "tsx --tsconfig tsconfig.server.json server.ts",
     "build": "next build",
     "start": "NODE_ENV=production tsx --tsconfig tsconfig.server.json server.ts",
-    "lint": "eslint"
+    "lint": "eslint",
+    "test:random": "tsx scripts/random-distribution.test.ts"
   },
   "dependencies": {
     "canvas-confetti": "^1.9.4",

@@ -56,6 +56,19 @@ class SoundManager {
       setTimeout(() => this.playTone(freq, 0.2), i * 150);
     });
   }
+
+  spin() {
+    [400, 500, 600, 700, 800].forEach((freq, i) => {
+      setTimeout(() => this.playTone(freq, 0.08, "square"), i * 80);
+    });
+  }
+
+  drinkWinner() {
+    this.playTone(262, 0.15);
+    setTimeout(() => this.playTone(330, 0.15), 100);
+    setTimeout(() => this.playTone(392, 0.2), 200);
+    setTimeout(() => this.playTone(523, 0.4), 350);
+  }
 }
 
 export const sounds = new SoundManager();

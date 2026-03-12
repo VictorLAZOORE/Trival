@@ -8,8 +8,8 @@ const inter = Inter({
 });
 
 export const metadata: Metadata = {
-  title: "Trival — Real-time Multiplayer Trivia",
-  description: "A Kahoot-style trivia game with AI-generated questions. Play with friends in real-time!",
+  title: "Trival — Mini-jeux multijoueur",
+  description: "Quiz en temps réel et Drink Roulette. Joue avec tes amis !",
 };
 
 export const viewport: Viewport = {

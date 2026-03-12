@@ -3,6 +3,7 @@ import { parse } from "url";
 import next from "next";
 import { Server as SocketIOServer } from "socket.io";
 import { gameManager } from "./src/server/gameManager";
+import { drinkRouletteManager } from "./src/server/drinkRouletteManager";
 import {
   QUESTION_TIME,
   SHOW_ANSWER_TIME,
@@ -226,12 +227,88 @@ app.prepare().then(() => {
       }
     });
 
+    // ——— Drink Roulette ———
+    socket.on("list_rooms_dr", (callback) => {
+      callback(drinkRouletteManager.getOpenRooms());
+    });
+
+    socket.on("create_room_dr", ({ playerName }, callback) => {
+      const room = drinkRouletteManager.createRoom(socket.id, playerName);
+      socket.join(room.code);
+      callback({ success: true, room: drinkRouletteManager.toClientRoom(room) });
+    });
+
+    socket.on("join_room_dr", ({ code, playerName }, callback) => {
+      const result = drinkRouletteManager.joinRoom(
+        code,
+        socket.id,
+        playerName
+      );
+      if (!result) {
+        callback({
+          success: false,
+          error: "Room not found or full",
+        });
+        return;
+      }
+      socket.join(result.room.code);
+      callback({
+        success: true,
+        room: drinkRouletteManager.toClientRoom(result.room),
+      });
+      socket.to(result.room.code).emit("player_joined_dr", {
+        room: drinkRouletteManager.toClientRoom(result.room),
+      });
+    });
+
+    socket.on("spin_roulette", ({ code }, callback) => {
+      const room = drinkRouletteManager.getRoom(code);
+      if (!room || room.host !== socket.id) {
+        callback?.({ success: false, error: "Not authorized" });
+        return;
+      }
+      if (room.players.size < 2) {
+        callback?.({ success: false, error: "Need at least 2 players" });
+        return;
+      }
+      const winnerId = drinkRouletteManager.spinRoulette(code);
+      if (!winnerId) {
+        callback?.({ success: false });
+        return;
+      }
+      const winner = room.players.get(winnerId)!;
+      io.to(code).emit("roulette_result", {
+        winnerId: winner.id,
+        winnerName: winner.name,
+        history: room.history,
+      });
+      callback?.({ success: true, winnerId, winnerName: winner.name });
+    });
+
+    socket.on("leave_room_dr", ({ code }) => {
+      const room = drinkRouletteManager.getRoom(code);
+      if (!room) return;
+      socket.leave(code);
+      const result = drinkRouletteManager.removePlayer(socket.id);
+      if (result && result.room.players.size > 0) {
+        io.to(result.room.code).emit("player_left_dr", {
+          room: drinkRouletteManager.toClientRoom(result.room),
+        });
+      }
+    });
+
     socket.on("disconnect", () => {
       console.log(`Player disconnected: ${socket.id}`);
       const result = gameManager.removePlayer(socket.id);
       if (result && result.room.players.size > 0) {
         io.to(result.room.code).emit("player_left", {
           room: gameManager.toClientRoom(result.room),
+        });
+      }
+      const resultDr = drinkRouletteManager.removePlayer(socket.id);
+      if (resultDr && resultDr.room.players.size > 0) {
+        io.to(resultDr.room.code).emit("player_left_dr", {
+          room: drinkRouletteManager.toClientRoom(resultDr.room),
         });
       }
     });
