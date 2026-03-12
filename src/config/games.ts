@@ -40,4 +40,12 @@ export const GAMES: GameConfig[] = [
     emoji: "👆",
     gradient: "from-emerald-500 to-teal-600",
   },
+  {
+    id: "guess-head",
+    name: "Devine Tête",
+    description: "Place un mot sur ton front, fais-le deviner aux autres.",
+    href: "/games/guess-head",
+    emoji: "🧠",
+    gradient: "from-cyan-500 to-indigo-600",
+  },
 ];

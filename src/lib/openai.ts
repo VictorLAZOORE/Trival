@@ -70,6 +70,77 @@ Return ONLY the JSON array, no markdown or extra text.`;
   }
 }
 
+export async function generateGuessHeadWords(
+  theme: string,
+  count: number,
+  language: "fr" | "en" = "fr"
+): Promise<string[]> {
+  const langInstruction =
+    language === "fr"
+      ? "Les mots doivent être en FRANÇAIS, facilement prononçables en soirée."
+      : "Words must be in ENGLISH, easy to pronounce at a party.";
+
+  const prompt = `Tu génères des mots pour le jeu \"Devine Tête\" (phone-on-forehead party game).
+
+Thème demandé: "${theme}".
+
+Contraintes:
+- Génère ${count} mots ou noms très courts (1 à 3 mots maximum).
+- Mélange personnages, objets, concepts amusants liés au thème.
+- Évite les choses trop obscures ou offensantes.
+- ${langInstruction}
+
+Format de sortie:
+- Retourne UNIQUEMENT un tableau JSON de chaînes de caractères, par exemple:
+  ["Harry Potter", "Zidane", "Pikachu"]`;
+
+  try {
+    const response = await getClient().chat.completions.create({
+      model: "gpt-4o-mini",
+      messages: [
+        {
+          role: "system",
+          content:
+            "Tu es un générateur de mots pour un jeu de soirée. Tu retournes UNIQUEMENT du JSON valide.",
+        },
+        { role: "user", content: prompt },
+      ],
+      temperature: 0.9,
+      max_tokens: 1000,
+    });
+
+    const content = response.choices[0]?.message?.content?.trim();
+    if (!content) throw new Error("Empty response from OpenAI");
+
+    const cleaned = content.replace(/^```json?\n?/, "").replace(/\n?```$/, "");
+    const words = JSON.parse(cleaned) as string[];
+    return words.filter((w) => typeof w === "string" && w.trim().length > 0);
+  } catch (error) {
+    console.error("OpenAI guess-head generation failed, using simple fallback:", error);
+    // Fallback très simple si l'IA n'est pas dispo
+    const fallback = [
+      "Harry Potter",
+      "Zidane",
+      "Pikachu",
+      "Batman",
+      "Shrek",
+      "Beyoncé",
+      "Spider-Man",
+      "Simba",
+      "Barbie",
+      "Joker",
+      "Chat",
+      "Chien",
+      "Licorne",
+    ];
+    const result: string[] = [];
+    for (let i = 0; i < count; i++) {
+      result.push(fallback[i % fallback.length] ?? `Mot ${i + 1}`);
+    }
+    return result;
+  }
+}
+
 function generateFallbackQuestions(
   theme: string,
   count: number
